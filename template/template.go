@@ -23,7 +23,7 @@ import (
 )
 
 var delimiter = "\\$"
-var substitution = "[_a-z][_a-z0-9]*(?::?[-?][^}]*)?"
+var substitution = "[_a-z][_a-z0-9]*(?::?[-?+][^}]*)?"
 
 var patternString = fmt.Sprintf(
 	"%s(?i:(?P<escaped>%s)|(?P<named>%s)|{(?P<braced>%s)}|(?P<invalid>))",
@@ -38,6 +38,8 @@ var DefaultSubstituteFuncs = []SubstituteFunc{
 	hardDefault,
 	requiredNonEmpty,
 	required,
+	softAlternate,
+	hardAlternate,
 }
 
 // InvalidTemplateError is returned when a variable template is not in a valid
@@ -246,6 +248,34 @@ func withRequired(substitution string, mapping Mapping, sep string, valid func(s
 		}
 	}
 	return value, true, nil
+}
+
+// Soft alternate (use alternate if set)
+func softAlternate(substitution string, mapping Mapping) (string, bool, error) {
+	sep := ":+"
+	if !strings.Contains(substitution, sep) {
+		return "", false, nil
+	}
+	name, alternateValue := partition(substitution, sep)
+	value, ok := mapping(name)
+	if !ok || value == "" {
+		return "", true, nil
+	}
+	return alternateValue, true, nil
+}
+
+// Hard alternate (use alternate if set or empty)
+func hardAlternate(substitution string, mapping Mapping) (string, bool, error) {
+	sep := "+"
+	if !strings.Contains(substitution, sep) {
+		return "", false, nil
+	}
+	name, alternateValue := partition(substitution, sep)
+	_, ok := mapping(name)
+	if !ok {
+		return "", true, nil
+	}
+	return alternateValue, true, nil
 }
 
 func matchGroups(matches []string, pattern *regexp.Regexp) map[string]string {

@@ -172,6 +172,44 @@ func TestDefaultsForMandatoryVariables(t *testing.T) {
 	}
 }
 
+func TestAlternateVariables(t *testing.T) {
+	testCases := []struct {
+		template string
+		expected string
+	}{
+		{
+			template: "ok ${FOO:+def}",
+			expected: "ok def",
+		},
+		{
+			template: "ok ${FOO+def}",
+			expected: "ok def",
+		},
+		{
+			template: "ok ${UNSET_VAR:+def}",
+			expected: "ok ",
+		},
+		{
+			template: "ok ${UNSET_VAR+def}",
+			expected: "ok ",
+		},
+		{
+			template: "ok ${BAR:+def}",
+			expected: "ok ",
+		},
+		{
+			template: "ok ${BAR+def}",
+			expected: "ok def",
+		},
+	}
+
+	for _, tc := range testCases {
+		result, err := Substitute(tc.template, defaultMapping)
+		assert.NilError(t, err)
+		assert.Check(t, is.Equal(tc.expected, result))
+	}
+}
+
 func TestSubstituteWithCustomFunc(t *testing.T) {
 	errIsMissing := func(substitution string, mapping Mapping) (string, bool, error) {
 		value, found := mapping(substitution)
